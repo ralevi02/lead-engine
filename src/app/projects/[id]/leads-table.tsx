@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Table,
@@ -25,6 +26,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { updateCompanyStatus } from "@/app/actions/leads";
+import { enrichCompany } from "@/app/actions/contacts";
+import type { CompanyWithContacts } from "@/types";
 import type { Company } from "@/types";
 
 // ─── Score badge ──────────────────────────────────────────────────────────────
@@ -75,20 +78,33 @@ function StatusBadge({ status }: { status: Company["status"] }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface LeadsTableProps {
-  companies: Company[];
+  companies: CompanyWithContacts[];
+  projectId: string;
 }
 
-export function LeadsTable({ companies }: LeadsTableProps) {
-  const [selected, setSelected] = useState<Company | null>(null);
-  const [localCompanies, setLocalCompanies] = useState<Company[]>(companies);
+export function LeadsTable({ companies, projectId }: LeadsTableProps) {
+  const router = useRouter();
+  const [selected, setSelected] = useState<CompanyWithContacts | null>(null);
+  const [localCompanies, setLocalCompanies] = useState<CompanyWithContacts[]>(companies);
   const [isPending, startTransition] = useTransition();
+  const [isEnriching, setIsEnriching] = useState(false);
 
   // Sync with server-side prop updates (e.g. after router.refresh())
-  // Keep locally-overridden statuses, but pick up new companies from the server
+  // Keep locally-overridden statuses, but take fresh contacts from the server
   useEffect(() => {
     setLocalCompanies((prev) => {
       const localById = new Map(prev.map((c) => [c.id, c]));
-      return companies.map((c) => localById.get(c.id) ?? c);
+      return companies.map((c) => {
+        const local = localById.get(c.id);
+        // Preserve local status override but accept fresh contacts
+        return local ? { ...c, status: local.status } : c;
+      });
+    });
+    // Also keep Sheet in sync when contacts arrive after enrichment
+    setSelected((prev) => {
+      if (!prev) return null;
+      const fresh = companies.find((c) => c.id === prev.id);
+      return fresh ? { ...fresh, status: prev.status } : prev;
     });
   }, [companies]);
 
@@ -152,7 +168,7 @@ export function LeadsTable({ companies }: LeadsTableProps) {
               <TableRow
                 key={company.id}
                 className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
-                onClick={() => setSelected(company)}
+                onClick={() => setSelected(company as CompanyWithContacts)}
               >
                 <TableCell className="font-medium">
                   <div className="flex flex-col gap-0.5">
@@ -208,7 +224,7 @@ export function LeadsTable({ companies }: LeadsTableProps) {
                     className="text-xs h-7 px-2"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelected(company);
+                      setSelected(company as CompanyWithContacts);
                     }}
                   >
                     Ver más →
@@ -268,14 +284,90 @@ export function LeadsTable({ companies }: LeadsTableProps) {
 
                 {/* Contact placeholder (Phase 3) */}
                 <div className="space-y-1.5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Contacto Principal
-                  </p>
-                  <div className="rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700 p-4 text-center">
-                    <p className="text-xs text-zinc-400">
-                      La búsqueda de contactos estará disponible en la siguiente versión.
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      Contactos ({selected.contacts?.length ?? 0})
                     </p>
+                    <button
+                      disabled={isEnriching}
+                      onClick={() => {
+                        setIsEnriching(true);
+                        enrichCompany({ companyId: selected.id, projectId })
+                          .then((res) => {
+                            if (!res.ok) {
+                              toast.error(res.error);
+                            } else if (res.count === 0) {
+                              toast.info("No se encontraron contactos para esta empresa.");
+                            } else {
+                              toast.success(`${res.count} contacto${res.count === 1 ? "" : "s"} encontrado${res.count === 1 ? "" : "s"}.`);
+                              router.refresh();
+                            }
+                          })
+                          .catch(() => toast.error("Error al enriquecer contactos."))
+                          .finally(() => setIsEnriching(false));
+                      }}
+                      className="flex items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                    >
+                      {isEnriching ? (
+                        <>
+                          <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                          Buscando...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
+                          Buscar con Apollo
+                        </>
+                      )}
+                    </button>
                   </div>
+
+                  {selected.contacts && selected.contacts.length > 0 ? (
+                    <div className="space-y-2">
+                      {selected.contacts.map((contact) => (
+                        <div
+                          key={contact.id}
+                          className="rounded-lg border border-zinc-100 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 p-3 space-y-1"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                                {[contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Nombre desconocido"}
+                              </p>
+                              {contact.title && (
+                                <p className="text-xs text-zinc-500">{contact.title}</p>
+                              )}
+                            </div>
+                            {contact.linkedinUrl && (
+                              <a
+                                href={contact.linkedinUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 text-zinc-400 hover:text-blue-600"
+                                title="Ver LinkedIn"
+                              >
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect x="2" y="9" width="4" height="12" /><circle cx="4" cy="4" r="2" /></svg>
+                              </a>
+                            )}
+                          </div>
+                          {contact.email && (
+                            <a
+                              href={`mailto:${contact.email}`}
+                              className="block truncate text-xs text-blue-600 hover:underline"
+                            >
+                              {contact.email}
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700 p-4 text-center">
+                      <p className="text-xs text-zinc-400">
+                        Pulsa &ldquo;Buscar con Apollo&rdquo; para encontrar decision makers.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}

@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { projects, companies } from "@/db/schema";
+import { projects, companies, contacts } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LeadDiscoveryForm } from "./lead-discovery-form";
 import { LeadsTable } from "./leads-table";
-import type { Company } from "@/types";
+import type { Contact, CompanyWithContacts } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -29,11 +29,35 @@ export default async function ProjectDetailPage({ params }: Props) {
   if (!project) notFound();
 
   // Load companies sorted by score descending
-  const projectCompanies: Company[] = await db
+  const rawCompanies = await db
     .select()
     .from(companies)
     .where(eq(companies.projectId, id))
     .orderBy(desc(companies.matchScore));
+
+  // Load all contacts for these companies in one query
+  const companyIds = rawCompanies.map((c) => c.id);
+  const allContacts: Contact[] =
+    companyIds.length > 0
+      ? await db
+          .select()
+          .from(contacts)
+          .where(inArray(contacts.companyId, companyIds))
+      : [];
+
+  const contactsByCompany = allContacts.reduce<Record<string, Contact[]>>(
+    (acc, c) => {
+      if (!acc[c.companyId]) acc[c.companyId] = [];
+      acc[c.companyId].push(c);
+      return acc;
+    },
+    {}
+  );
+
+  const projectCompanies: CompanyWithContacts[] = rawCompanies.map((c) => ({
+    ...c,
+    contacts: contactsByCompany[c.id] ?? [],
+  }));
 
   // Metrics
   const total = projectCompanies.length;
@@ -190,7 +214,7 @@ export default async function ProjectDetailPage({ params }: Props) {
               </span>
             )}
           </div>
-          <LeadsTable companies={projectCompanies} />
+          <LeadsTable companies={projectCompanies} projectId={id} />
         </div>
       </main>
     </div>
