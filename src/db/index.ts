@@ -1,9 +1,8 @@
-import { Pool } from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 
-// pg doesn't support Neon's `channel_binding` param — strip it so the
-// connection string only contains params pg actually understands.
+// Neon's channel_binding param is not understood by the HTTP driver — strip it.
 function cleanConnectionString(url: string): string {
   const [base, qs] = url.split("?");
   if (!qs) return url;
@@ -14,18 +13,9 @@ function cleanConnectionString(url: string): string {
   return params ? `${base}?${params}` : base;
 }
 
-const pool = new Pool({
-  connectionString: cleanConnectionString(process.env.DATABASE_URL!),
-  ssl: { rejectUnauthorized: false },
-  max: 3,
-  idleTimeoutMillis: 20_000,
-  connectionTimeoutMillis: 15_000,
-  allowExitOnIdle: false,
-});
+// HTTP driver: creates a fresh connection per query — no stale pool issues.
+// This is the recommended approach for Next.js + Neon (serverless environment).
+const sql = neon(cleanConnectionString(process.env.DATABASE_URL!));
 
-// Prevent unhandled pool errors from crashing the process
-pool.on("error", (err) => {
-  console.error("[pg pool] idle client error:", err.message);
-});
+export const db = drizzle(sql, { schema });
 
-export const db = drizzle(pool, { schema });
