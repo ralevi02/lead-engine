@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,20 +10,58 @@ import { triggerLeadGeneration } from "@/app/actions/leads";
 
 interface LeadDiscoveryFormProps {
   projectId: string;
+  currentCount?: number;
   disabled?: boolean;
 }
 
-export function LeadDiscoveryForm({ projectId, disabled }: LeadDiscoveryFormProps) {
+export function LeadDiscoveryForm({ projectId, currentCount = 0, disabled }: LeadDiscoveryFormProps) {
   const [city, setCity] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [isPolling, setIsPolling] = useState(false);
   const [triggered, setTriggered] = useState(false);
   const router = useRouter();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countRef = useRef<number>(currentCount);
+  const stableRef = useRef<number>(0); // consecutive polls with same count
+
+  // When currentCount updates during polling, check if process is done
+  useEffect(() => {
+    if (!isPolling) return;
+    if (currentCount === countRef.current) {
+      stableRef.current++;
+    } else {
+      // Count grew — reset stability counter
+      stableRef.current = 0;
+      countRef.current = currentCount;
+    }
+    // 2 consecutive polls with same count (and count > initial) = done
+    if (stableRef.current >= 2 && currentCount > 0) {
+      stopPolling();
+      toast.success(
+        `¡Proceso completado! Se encontraron ${currentCount} leads en total.`,
+        { duration: 8000 }
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentCount]);
+
+  function stopPolling() {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setIsPolling(false);
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!city.trim()) return;
 
     startTransition(async () => {
+      if (!city.trim()) {
+        toast.error("Por favor ingresa una ciudad o región.");
+        return;
+      }
+
       const result = await triggerLeadGeneration({ projectId, city: city.trim() });
 
       if (!result.ok) {
@@ -32,17 +70,24 @@ export function LeadDiscoveryForm({ projectId, disabled }: LeadDiscoveryFormProp
       }
 
       setTriggered(true);
-      toast.success(
-        "¡Búsqueda iniciada! Los leads aparecerán en la tabla en 1-2 minutos.",
-        { duration: 6000 }
+      setIsPolling(true);
+      countRef.current = currentCount;
+      stableRef.current = 0;
+
+      toast.info(
+        "Búsqueda iniciada. Los leads aparecerán en la tabla automáticamente.",
+        { duration: 5000 }
       );
 
-      // Poll: refresh every 15s for up to 3 minutes
+      // Poll every 15s for up to 5 minutes, stop early when done
       let attempts = 0;
-      const poll = setInterval(() => {
+      pollRef.current = setInterval(() => {
         attempts++;
         router.refresh();
-        if (attempts >= 12) clearInterval(poll);
+        if (attempts >= 20) {
+          stopPolling();
+          toast.info("La búsqueda finalizó.", { duration: 4000 });
+        }
       }, 15_000);
     });
   };
@@ -62,11 +107,16 @@ export function LeadDiscoveryForm({ projectId, disabled }: LeadDiscoveryFormProp
           className="max-w-xs"
         />
       </div>
-      <Button type="submit" disabled={isPending || !city.trim() || disabled}>
+      <Button type="submit" disabled={isPending || isPolling || disabled}>
         {isPending ? (
           <span className="flex items-center gap-2">
             <SpinnerIcon />
             Iniciando...
+          </span>
+        ) : isPolling ? (
+          <span className="flex items-center gap-2">
+            <SpinnerIcon />
+            Buscando...
           </span>
         ) : triggered ? (
           "Buscar de nuevo"

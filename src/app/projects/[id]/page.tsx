@@ -175,7 +175,7 @@ export default async function ProjectDetailPage({ params }: Props) {
               1-3 minutos.
             </p>
           </div>
-          <LeadDiscoveryForm projectId={project.id} />
+          <LeadDiscoveryForm projectId={project.id} currentCount={total} />
         </div>
 
         {/* ── Leads table ── */}

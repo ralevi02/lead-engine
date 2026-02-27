@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Table,
@@ -82,6 +82,15 @@ export function LeadsTable({ companies }: LeadsTableProps) {
   const [selected, setSelected] = useState<Company | null>(null);
   const [localCompanies, setLocalCompanies] = useState<Company[]>(companies);
   const [isPending, startTransition] = useTransition();
+
+  // Sync with server-side prop updates (e.g. after router.refresh())
+  // Keep locally-overridden statuses, but pick up new companies from the server
+  useEffect(() => {
+    setLocalCompanies((prev) => {
+      const localById = new Map(prev.map((c) => [c.id, c]));
+      return companies.map((c) => localById.get(c.id) ?? c);
+    });
+  }, [companies]);
 
   if (localCompanies.length === 0) {
     return (
