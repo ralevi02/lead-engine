@@ -3,9 +3,9 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { db } from "@/db";
 import { projects, companies } from "@/db/schema";
-import { inngest } from "@/inngest/client";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -21,9 +21,7 @@ const updateStatusSchema = z.object({
 
 // ─── Trigger lead generation ──────────────────────────────────────────────────
 
-export type TriggerLeadsResult =
-  | { ok: true; eventId: string }
-  | { ok: false; error: string };
+export type TriggerLeadsResult = { ok: true } | { ok: false; error: string };
 
 export async function triggerLeadGeneration(
   input: z.infer<typeof triggerSchema>
@@ -46,22 +44,21 @@ export async function triggerLeadGeneration(
     return { ok: false, error: "Proyecto no encontrado." };
   }
 
-  try {
-    const { ids } = await inngest.send({
-      name: "leads/generate",
-      data: { projectId, city },
-    });
+  // Build absolute URL from request host
+  const headersList = await headers();
+  const host = headersList.get("host") ?? "localhost:3000";
+  const protocol = host.startsWith("localhost") ? "http" : "https";
+  const apiUrl = `${protocol}://${host}/api/leads/generate`;
 
-    revalidatePath(`/projects/${projectId}`);
-    return { ok: true, eventId: ids[0] };
-  } catch (err) {
-    console.error("[triggerLeadGeneration]", err);
-    return {
-      ok: false,
-      error:
-        err instanceof Error ? err.message : "Error al iniciar la búsqueda.",
-    };
-  }
+  // Fire-and-forget: the route handler processes everything asynchronously.
+  // The client polls /projects/[id] every 15s to pick up new results.
+  fetch(apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectId, city }),
+  }).catch((err) => console.error("[triggerLeadGeneration] fetch error:", err));
+
+  return { ok: true };
 }
 
 // ─── Update company status ─────────────────────────────────────────────────
