@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { companies, contacts } from "@/db/schema";
-import { searchContacts } from "@/lib/apollo";
+import { searchContacts } from "@/lib/hunter";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
