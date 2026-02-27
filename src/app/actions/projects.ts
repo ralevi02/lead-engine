@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import { projects } from "@/db/schema";
 import { scrapeUrl } from "@/lib/scraper";
 import { generateICP } from "@/lib/icp";
@@ -89,10 +89,12 @@ export async function createProject(
     .trim();
 
   try {
-    const [project] = await db
-      .insert(projects)
-      .values({ name, sourceUrl, icpDescription: fullIcp })
-      .returning({ id: projects.id });
+    const [project] = await withRetry(() =>
+      db
+        .insert(projects)
+        .values({ name, sourceUrl, icpDescription: fullIcp })
+        .returning({ id: projects.id })
+    );
 
     revalidatePath("/");
 

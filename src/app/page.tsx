@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { desc } from "drizzle-orm";
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import { projects } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,9 @@ import type { Project } from "@/types";
 export const dynamic = "force-dynamic"; // always fetch fresh data
 
 export default async function HomePage() {
-  const allProjects: Project[] = await db
-    .select()
-    .from(projects)
-    .orderBy(desc(projects.createdAt));
+  const allProjects: Project[] = await withRetry(() =>
+    db.select().from(projects).orderBy(desc(projects.createdAt))
+  );
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">

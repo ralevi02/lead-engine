@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { desc, eq, inArray } from "drizzle-orm";
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import { projects, companies, contacts } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,29 +20,31 @@ export default async function ProjectDetailPage({ params }: Props) {
   const { id } = await params;
 
   // Load project
-  const [project] = await db
-    .select()
-    .from(projects)
-    .where(eq(projects.id, id))
-    .limit(1);
+  const [project] = await withRetry(() =>
+    db.select().from(projects).where(eq(projects.id, id)).limit(1)
+  );
 
   if (!project) notFound();
 
   // Load companies sorted by score descending
-  const rawCompanies = await db
-    .select()
-    .from(companies)
-    .where(eq(companies.projectId, id))
-    .orderBy(desc(companies.matchScore));
+  const rawCompanies = await withRetry(() =>
+    db
+      .select()
+      .from(companies)
+      .where(eq(companies.projectId, id))
+      .orderBy(desc(companies.matchScore))
+  );
 
   // Load all contacts for these companies in one query
   const companyIds = rawCompanies.map((c) => c.id);
   const allContacts: Contact[] =
     companyIds.length > 0
-      ? await db
-          .select()
-          .from(contacts)
-          .where(inArray(contacts.companyId, companyIds))
+      ? await withRetry(() =>
+          db
+            .select()
+            .from(contacts)
+            .where(inArray(contacts.companyId, companyIds))
+        )
       : [];
 
   const contactsByCompany = allContacts.reduce<Record<string, Contact[]>>(

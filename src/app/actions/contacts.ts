@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import { companies, contacts } from "@/db/schema";
 import { searchContacts } from "@/lib/hunter";
 
@@ -33,11 +33,9 @@ export async function enrichCompany(
   const { companyId, projectId } = parsed.data;
 
   // Load company
-  const [company] = await db
-    .select()
-    .from(companies)
-    .where(eq(companies.id, companyId))
-    .limit(1);
+  const [company] = await withRetry(() =>
+    db.select().from(companies).where(eq(companies.id, companyId)).limit(1)
+  );
 
   if (!company) return { ok: false, error: "Empresa no encontrada." };
   if (!company.websiteUrl) {
@@ -45,7 +43,7 @@ export async function enrichCompany(
   }
 
   // Delete old contacts before re-enriching
-  await db.delete(contacts).where(eq(contacts.companyId, companyId));
+  await withRetry(() => db.delete(contacts).where(eq(contacts.companyId, companyId)));
 
   try {
     const found = await searchContacts(company.websiteUrl, 5);
@@ -54,15 +52,17 @@ export async function enrichCompany(
       return { ok: true, count: 0 };
     }
 
-    await db.insert(contacts).values(
-      found.map((c) => ({
-        companyId,
-        firstName: c.firstName || null,
-        lastName: c.lastName || null,
-        title: c.title || null,
-        email: c.email || null,
-        linkedinUrl: c.linkedinUrl || null,
-      }))
+    await withRetry(() =>
+      db.insert(contacts).values(
+        found.map((c) => ({
+          companyId,
+          firstName: c.firstName || null,
+          lastName: c.lastName || null,
+          title: c.title || null,
+          email: c.email || null,
+          linkedinUrl: c.linkedinUrl || null,
+        }))
+      )
     );
 
     revalidatePath(`/projects/${projectId}`);

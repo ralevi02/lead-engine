@@ -4,7 +4,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import { projects, companies } from "@/db/schema";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -34,11 +34,9 @@ export async function triggerLeadGeneration(
   const { projectId, city } = parsed.data;
 
   // Verify project exists
-  const [project] = await db
-    .select({ id: projects.id })
-    .from(projects)
-    .where(eq(projects.id, projectId))
-    .limit(1);
+  const [project] = await withRetry(() =>
+    db.select({ id: projects.id }).from(projects).where(eq(projects.id, projectId)).limit(1)
+  );
 
   if (!project) {
     return { ok: false, error: "Proyecto no encontrado." };
@@ -74,10 +72,12 @@ export async function updateCompanyStatus(
   }
 
   try {
-    await db
-      .update(companies)
-      .set({ status: parsed.data.status })
-      .where(eq(companies.id, parsed.data.companyId));
+    await withRetry(() =>
+      db
+        .update(companies)
+        .set({ status: parsed.data.status })
+        .where(eq(companies.id, parsed.data.companyId))
+    );
 
     return { ok: true };
   } catch (err) {

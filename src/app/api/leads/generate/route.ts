@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import { projects, companies } from "@/db/schema";
 import {
   searchPlaces,
@@ -26,11 +26,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Load project
-    const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, projectId))
-      .limit(1);
+    const [project] = await withRetry(() =>
+      db.select().from(projects).where(eq(projects.id, projectId)).limit(1)
+    );
 
     if (!project) {
       return NextResponse.json(
@@ -69,11 +67,13 @@ export async function POST(req: NextRequest) {
 
     for (const place of places) {
       // Skip duplicates already saved for this project
-      const existing = await db
-        .select({ id: companies.id })
-        .from(companies)
-        .where(eq(companies.googlePlaceId, place.placeId))
-        .limit(1);
+      const existing = await withRetry(() =>
+        db
+          .select({ id: companies.id })
+          .from(companies)
+          .where(eq(companies.googlePlaceId, place.placeId))
+          .limit(1)
+      );
 
       if (existing.length > 0) continue;
 
@@ -93,15 +93,17 @@ export async function POST(req: NextRequest) {
       );
 
       // Save to DB
-      await db.insert(companies).values({
-        projectId,
-        name: place.name,
-        websiteUrl: place.websiteUri,
-        googlePlaceId: place.placeId,
-        aiSummary: `${scoring.summary}\n\n**Razonamiento:** ${scoring.reasoning}`,
-        matchScore: scoring.score,
-        status: scoring.status,
-      });
+      await withRetry(() =>
+        db.insert(companies).values({
+          projectId,
+          name: place.name,
+          websiteUrl: place.websiteUri,
+          googlePlaceId: place.placeId,
+          aiSummary: `${scoring.summary}\n\n**Razonamiento:** ${scoring.reasoning}`,
+          matchScore: scoring.score,
+          status: scoring.status,
+        })
+      );
 
       processed++;
       results.push({ name: place.name, score: scoring.score });
