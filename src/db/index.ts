@@ -17,9 +17,15 @@ function cleanConnectionString(url: string): string {
 const pool = new Pool({
   connectionString: cleanConnectionString(process.env.DATABASE_URL!),
   ssl: { rejectUnauthorized: false },
-  max: 5,
-  idleTimeoutMillis: 30_000,
-  connectionTimeoutMillis: 10_000,
+  max: 3,
+  idleTimeoutMillis: 20_000,
+  connectionTimeoutMillis: 15_000,
+  allowExitOnIdle: false,
+});
+
+// Prevent unhandled pool errors from crashing the process
+pool.on("error", (err) => {
+  console.error("[pg pool] idle client error:", err.message);
 });
 
 export const db = drizzle(pool, { schema });
