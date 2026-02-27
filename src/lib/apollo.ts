@@ -52,22 +52,29 @@ export async function searchContacts(
   if (!domain) throw new Error(`URL inválida: ${websiteUrl}`);
 
   const body = {
-    api_key: apiKey,
     q_organization_domains: [domain],
     person_titles: ICP_TITLES,
     per_page: maxResults,
     page: 1,
   };
 
-  const res = await fetch("https://api.apollo.io/v1/mixed_people/search", {
+  const res = await fetch("https://api.apollo.io/api/v1/mixed_people/search", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "x-api-key": apiKey,
       "Cache-Control": "no-cache",
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(20_000),
   });
+
+  if (res.status === 403) {
+    throw new Error(
+      "La búsqueda de contactos requiere un plan pagado de Apollo.io. " +
+      "Actualiza tu plan en https://app.apollo.io/"
+    );
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");

@@ -295,7 +295,15 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
                         enrichCompany({ companyId: selected.id, projectId })
                           .then((res) => {
                             if (!res.ok) {
-                              toast.error(res.error);
+                              // Check if it's a plan limitation error
+                              if (res.error.includes("plan pagado")) {
+                                toast.error("Apollo.io requiere plan pagado para buscar contactos.", {
+                                  description: "Actualiza tu plan en app.apollo.io",
+                                  duration: 8000,
+                                });
+                              } else {
+                                toast.error(res.error);
+                              }
                             } else if (res.count === 0) {
                               toast.info("No se encontraron contactos para esta empresa.");
                             } else {
