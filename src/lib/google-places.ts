@@ -18,6 +18,7 @@ interface PlacesApiResponse {
     displayName?: { text: string };
     formattedAddress?: string;
     websiteUri?: string;
+    businessStatus?: string;
   }>;
 }
 
@@ -41,11 +42,11 @@ export async function searchPlaces(
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.websiteUri",
+          "places.id,places.displayName,places.formattedAddress,places.websiteUri,places.businessStatus",
       },
       body: JSON.stringify({
         textQuery: `${query} ${city}`,
-        maxResultCount: maxResults,
+        maxResultCount: Math.min(maxResults, 20), // Google's hard limit is 20
         languageCode: "es",
       }),
       signal: AbortSignal.timeout(15_000),
@@ -62,12 +63,15 @@ export async function searchPlaces(
   const data: PlacesApiResponse = await res.json();
   const places = data.places ?? [];
 
-  return places.map((p) => ({
-    placeId: p.id,
-    name: p.displayName?.text ?? "Sin nombre",
-    address: p.formattedAddress ?? "",
-    websiteUri: p.websiteUri ?? null,
-  }));
+  return places
+    // Only include operational businesses
+    .filter((p) => !p.businessStatus || p.businessStatus === "OPERATIONAL")
+    .map((p) => ({
+      placeId: p.id,
+      name: p.displayName?.text ?? "Sin nombre",
+      address: p.formattedAddress ?? "",
+      websiteUri: p.websiteUri ?? null,
+    }));
 }
 
 /**
@@ -95,5 +99,5 @@ export function extractKeywordsFromIcp(icpDescription: string): string[] {
     .split(",")
     .map((k) => k.trim())
     .filter(Boolean)
-    .slice(0, 6);
+    .slice(0, 8); // up from 6 — use all available keywords
 }

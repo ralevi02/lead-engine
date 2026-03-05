@@ -39,19 +39,19 @@ export async function POST(req: NextRequest) {
 
     // 2. Extract search keywords from ICP
     const keywords = extractKeywordsFromIcp(project.icpDescription ?? "");
+    // Use all available keywords (up to 8), fall back to project name
     const searchTerms =
-      keywords.length > 0 ? keywords.slice(0, 4) : [project.name];
+      keywords.length > 0 ? keywords : [project.name];
 
-    // 3. Search Google Places
+    // 3. Search Google Places — 20 results per keyword, dedup, keep up to 50
     const allResults = [];
     for (const keyword of searchTerms) {
-      const found = await searchPlaces(keyword, city, 15);
+      const found = await searchPlaces(keyword, city, 20);
       allResults.push(...found);
     }
 
-    const places = deduplicatePlaces(allResults)
-      .filter((p) => p.websiteUri)
-      .slice(0, 20);
+    // Include companies without website — we can still score them with name+address
+    const places = deduplicatePlaces(allResults).slice(0, 50);
 
     if (places.length === 0) {
       return NextResponse.json({
@@ -77,12 +77,16 @@ export async function POST(req: NextRequest) {
 
       if (existing.length > 0) continue;
 
-      // Scrape
+      // Scrape (if no website, use name + address as context)
       let content = "";
       try {
-        content = await scrapeUrl(place.websiteUri!);
+        if (place.websiteUri) {
+          content = await scrapeUrl(place.websiteUri);
+        } else {
+          content = `Empresa: ${place.name}. Dirección: ${place.address}. Sin sitio web propio.`;
+        }
       } catch {
-        content = `Empresa: ${place.name}. Dirección: ${place.address}`;
+        content = `Empresa: ${place.name}. Dirección: ${place.address}.`;
       }
 
       // Score with Groq
