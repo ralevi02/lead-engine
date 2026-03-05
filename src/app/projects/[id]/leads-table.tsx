@@ -238,42 +238,45 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
 
       {/* ── Detail Sheet ── */}
       <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent className="flex flex-col p-0 sm:max-w-lg">
           {selected && (
-            <>
-              <SheetHeader className="space-y-2">
-                <SheetTitle className="text-lg leading-tight pr-8">
-                  {selected.name}
-                </SheetTitle>
-                {selected.websiteUrl && (
-                  <SheetDescription asChild>
-                    <a
-                      href={
-                        selected.websiteUrl.startsWith("http")
-                          ? selected.websiteUrl
-                          : `https://${selected.websiteUrl}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-zinc-500 hover:underline"
-                    >
-                      {selected.websiteUrl}
-                    </a>
-                  </SheetDescription>
-                )}
-              </SheetHeader>
-
-              <div className="mt-6 space-y-5">
-                {/* Score */}
-                <div className="flex items-center gap-3">
+            <div className="flex flex-1 flex-col overflow-hidden">
+              {/* ── Fixed header ── */}
+              <div className="border-b border-zinc-200 dark:border-zinc-800 px-6 py-5">
+                <SheetHeader className="space-y-1.5">
+                  <SheetTitle className="text-base leading-tight pr-8">
+                    {selected.name}
+                  </SheetTitle>
+                  {selected.websiteUrl && (
+                    <SheetDescription asChild>
+                      <a
+                        href={
+                          selected.websiteUrl.startsWith("http")
+                            ? selected.websiteUrl
+                            : `https://${selected.websiteUrl}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-zinc-500 hover:underline"
+                      >
+                        {selected.websiteUrl}
+                      </a>
+                    </SheetDescription>
+                  )}
+                </SheetHeader>
+                {/* Score + Status */}
+                <div className="mt-3 flex items-center gap-2">
                   <ScoreBadge score={selected.matchScore} />
                   <StatusBadge status={selected.status} />
                 </div>
+              </div>
 
+              {/* ── Scrollable body ── */}
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
                 {/* AI Summary */}
                 {selected.aiSummary && (
                   <div className="space-y-1.5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
                       Análisis IA
                     </p>
                     <div className="rounded-lg bg-zinc-50 dark:bg-zinc-900 p-4 text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
@@ -282,10 +285,10 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
                   </div>
                 )}
 
-                {/* Contact placeholder (Phase 3) */}
-                <div className="space-y-1.5">
+                {/* Contacts */}
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
                       Contactos ({selected.contacts?.length ?? 0})
                     </p>
                     <button
@@ -313,7 +316,7 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
                           .catch(() => toast.error("Error al enriquecer contactos."))
                           .finally(() => setIsEnriching(false));
                       }}
-                      className="flex items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                      className="flex items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
                     >
                       {isEnriching ? (
                         <>
@@ -371,20 +374,18 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
                   ) : (
                     <div className="rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700 p-4 text-center">
                       <p className="text-xs text-zinc-400">
-                        Pulsa &ldquo;Buscar con Apollo&rdquo; para encontrar decision makers.
+                        Pulsa &ldquo;Buscar con Hunter.io&rdquo; para encontrar decision makers.
                       </p>
                     </div>
                   )}
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-col gap-2 pt-2">
+                <div className="flex flex-col gap-2 pt-1">
                   {selected.status !== "contacted" && (
                     <Button
                       className="w-full"
-                      onClick={() =>
-                        handleStatusChange(selected.id, "contacted")
-                      }
+                      onClick={() => handleStatusChange(selected.id, "contacted")}
                       disabled={isPending}
                     >
                       ✓ Marcar como Contactado
@@ -394,22 +395,17 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
                     <Button
                       variant="outline"
                       className="w-full text-rose-600 hover:bg-rose-50 hover:text-rose-700 border-rose-200"
-                      onClick={() =>
-                        handleStatusChange(selected.id, "rejected")
-                      }
+                      onClick={() => handleStatusChange(selected.id, "rejected")}
                       disabled={isPending}
                     >
                       ✗ Rechazar Lead
                     </Button>
                   )}
-                  {(selected.status === "rejected" ||
-                    selected.status === "contacted") && (
+                  {(selected.status === "rejected" || selected.status === "contacted") && (
                     <Button
                       variant="ghost"
                       className="w-full"
-                      onClick={() =>
-                        handleStatusChange(selected.id, "qualified")
-                      }
+                      onClick={() => handleStatusChange(selected.id, "qualified")}
                       disabled={isPending}
                     >
                       ↩ Volver a Calificado
@@ -417,7 +413,7 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
                   )}
                 </div>
               </div>
-            </>
+            </div>
           )}
         </SheetContent>
       </Sheet>
