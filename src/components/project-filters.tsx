@@ -44,14 +44,14 @@ export function ProjectFilters({ filter, sort, total, shown }: ProjectFiltersPro
   );
 
   return (
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-      {/* Left — filter pills */}
-      <div className="flex items-center gap-1">
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Left — filter pills (scrollable on mobile) */}
+      <div className="flex items-center gap-1 overflow-x-auto pb-0.5 sm:pb-0">
         {FILTER_OPTIONS.map((opt) => (
           <button
             key={opt.value}
             onClick={() => updateParam("filter", opt.value)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               filter === opt.value
                 ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
                 : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"

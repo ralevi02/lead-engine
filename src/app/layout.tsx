@@ -33,8 +33,8 @@ export default function RootLayout({
           <TooltipProvider>
             <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-900">
               <AppSidebar />
-              {/* Main content — offset by sidebar width */}
-              <div className="flex flex-1 flex-col pl-56">
+              {/* Main content — offset by sidebar width on md+ */}
+              <div className="flex flex-1 flex-col md:pl-56">
                 {children}
               </div>
             </div>

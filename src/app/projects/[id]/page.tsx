@@ -5,6 +5,7 @@ import { db, withRetry } from "@/db";
 import { projects, companies, contacts } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { MobileMenuButton } from "@/components/mobile-menu-button";
 import { LeadDiscoveryForm } from "./lead-discovery-form";
 import { LeadsTable } from "./leads-table";
 import type { Contact, CompanyWithContacts } from "@/types";
@@ -85,24 +86,27 @@ export default async function ProjectDetailPage({ params }: Props) {
   return (
     <div className="flex flex-col min-h-screen">
       {/* ── Top bar ── */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-zinc-200 bg-white px-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="flex items-center gap-2 text-sm">
-          <Link href="/" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
-            Proyectos
-          </Link>
-          <svg className="h-3.5 w-3.5 text-zinc-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
-          <span className="font-semibold text-zinc-900 dark:text-zinc-50 truncate max-w-[200px]">{project.name}</span>
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4 dark:border-zinc-800 dark:bg-zinc-950 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <MobileMenuButton />
+          <div className="flex min-w-0 items-center gap-2 text-sm">
+            <Link href="/" className="hidden shrink-0 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors sm:inline">
+              Proyectos
+            </Link>
+            <svg className="hidden h-3.5 w-3.5 shrink-0 text-zinc-300 sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+            <span className="min-w-0 truncate font-semibold text-zinc-900 dark:text-zinc-50">{project.name}</span>
+          </div>
         </div>
         <Link
           href="/"
-          className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
+          className="flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
         >
           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
-          Proyectos
+          <span className="hidden sm:inline">Proyectos</span>
         </Link>
       </header>
 
-      <main className="flex-1 space-y-6 p-6">
+      <main className="flex-1 space-y-5 p-4 sm:space-y-6 sm:p-6">
         {/* ── Project hero card ── */}
         <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

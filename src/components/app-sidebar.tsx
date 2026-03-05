@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
+import { useSidebar } from "./sidebar-context";
 
 const NAV_MAIN = [
   {
@@ -32,13 +33,15 @@ const NAV_SETTINGS = [
   },
 ];
 
-function NavItem({ item, isActive }: {
+function NavItem({ item, isActive, onClick }: {
   item: { label: string; href: string; icon: React.ReactNode };
   isActive: boolean;
+  onClick?: () => void;
 }) {
   return (
     <Link
       href={item.href}
+      onClick={onClick}
       className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
         isActive
           ? "bg-blue-600 text-white"
@@ -53,9 +56,25 @@ function NavItem({ item, isActive }: {
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { open, setOpen } = useSidebar();
+  const close = () => setOpen(false);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-56 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+    <>
+      {/* Mobile overlay backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={close}
+          aria-hidden
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-zinc-200 bg-white transition-transform duration-200 dark:border-zinc-800 dark:bg-zinc-950 md:w-56 md:translate-x-0 ${
+          open ? "translate-x-0 shadow-xl" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
       {/* Logo */}
       <div className="flex h-14 items-center gap-2.5 border-b border-zinc-200 px-4 dark:border-zinc-800">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 shrink-0">
@@ -64,6 +83,15 @@ export function AppSidebar() {
         <span className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-white">
           LeadEngine
         </span>
+        {/* Close button — mobile only */}
+        <button
+          onClick={close}
+          className="ml-auto flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-white md:hidden"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       {/* Nav */}
@@ -72,7 +100,7 @@ export function AppSidebar() {
           Principal
         </p>
         {NAV_MAIN.map((item) => (
-          <NavItem key={item.href} item={item} isActive={item.matchFn(pathname)} />
+          <NavItem key={item.href} item={item} isActive={item.matchFn(pathname)} onClick={close} />
         ))}
 
         <div className="my-3 border-t border-zinc-100 dark:border-zinc-800" />
@@ -81,7 +109,7 @@ export function AppSidebar() {
           Sistema
         </p>
         {NAV_SETTINGS.map((item) => (
-          <NavItem key={item.href} item={item} isActive={item.matchFn(pathname)} />
+          <NavItem key={item.href} item={item} isActive={item.matchFn(pathname)} onClick={close} />
         ))}
       </nav>
 
@@ -93,5 +121,6 @@ export function AppSidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

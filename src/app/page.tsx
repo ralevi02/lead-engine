@@ -4,6 +4,7 @@ import { db, withRetry } from "@/db";
 import { projects } from "@/db/schema";
 import { NewProjectDialog } from "@/components/new-project-dialog";
 import { ProjectFilters } from "@/components/project-filters";
+import { MobileMenuButton } from "@/components/mobile-menu-button";
 import type { Project } from "@/types";
 import type { FilterValue, SortValue } from "@/components/project-filters";
 
@@ -43,28 +44,31 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   return (
     <div className="flex flex-col min-h-screen">
       {/* ── Top bar ── */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-zinc-200 bg-white px-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <div>
-          <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-            Proyectos de Prospección
-          </h1>
-          <p className="text-xs text-zinc-500">
-            {allProjects.length} proyecto{allProjects.length !== 1 ? "s" : ""}
-            {withIcp > 0 ? ` · ${withIcp} con ICP` : ""}
-          </p>
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4 dark:border-zinc-800 dark:bg-zinc-950 sm:px-6">
+        <div className="flex items-center gap-3">
+          <MobileMenuButton />
+          <div>
+            <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              Proyectos de Prospección
+            </h1>
+            <p className="text-xs text-zinc-500">
+              {allProjects.length} proyecto{allProjects.length !== 1 ? "s" : ""}
+              {withIcp > 0 ? ` · ${withIcp} con ICP` : ""}
+            </p>
+          </div>
         </div>
         <NewProjectDialog>
           <button className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Nuevo Proyecto
+            <span className="hidden sm:inline">Nuevo Proyecto</span>
           </button>
         </NewProjectDialog>
       </header>
 
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-4 sm:p-6">
         {/* ── Metric strip ── */}
         {allProjects.length > 0 && (
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

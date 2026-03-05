@@ -1,4 +1,5 @@
 import { ThemeToggle } from "@/components/theme-toggle";
+import { MobileMenuButton } from "@/components/mobile-menu-button";
 
 export const dynamic = "force-dynamic";
 
@@ -52,14 +53,15 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Top bar */}
-      <header className="sticky top-0 z-30 flex h-14 items-center border-b border-zinc-200 bg-white px-6 dark:border-zinc-800 dark:bg-zinc-950">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-zinc-200 bg-white px-4 dark:border-zinc-800 dark:bg-zinc-950 sm:px-6">
+        <MobileMenuButton />
         <div>
           <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Configuraciones</h1>
           <p className="text-xs text-zinc-500">Variables de entorno y preferencias del sistema</p>
         </div>
       </header>
 
-      <main className="flex-1 p-6 space-y-6 max-w-3xl">
+      <main className="flex-1 space-y-6 p-4 sm:p-6 max-w-3xl">
         {/* ── Appearance ── */}
         <section>
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400">

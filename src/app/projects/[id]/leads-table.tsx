@@ -210,9 +210,9 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
   return (
     <>
       {/* ── Toolbar ── */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        {/* Search */}
-        <div className="relative">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
+        {/* Search — full width on mobile */}
+        <div className="relative w-full sm:w-52">
           <svg className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
           </svg>
@@ -221,17 +221,17 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
             placeholder="Buscar empresa…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 w-52 rounded-md border border-zinc-200 bg-white pl-8 pr-3 text-xs text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            className="h-8 w-full rounded-md border border-zinc-200 bg-white pl-8 pr-3 text-xs text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
           />
         </div>
 
-        {/* Status filter pills */}
-        <div className="flex items-center gap-1">
+        {/* Status filter pills — scrollable on mobile */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 sm:flex-wrap sm:pb-0">
           {(["all", "pending", "qualified", "contacted", "rejected"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
                 statusFilter === s
                   ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
                   : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
@@ -243,7 +243,7 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
         </div>
 
         {/* Count */}
-        <span className="ml-auto text-xs text-zinc-400">
+        <span className="sm:ml-auto text-xs text-zinc-400">
           {displayCompanies.length < localCompanies.length
             ? `${displayCompanies.length} de ${localCompanies.length}`
             : `${localCompanies.length}`}{" "}
@@ -251,7 +251,7 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
         </span>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
         <Table>
           <TableHeader>
             <TableRow className="bg-zinc-50 dark:bg-zinc-900">
@@ -265,7 +265,7 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
                   <SortIcon active={sortCol === "name"} dir={sortDir} />
                 </span>
               </TableHead>
-              <TableHead>Resumen IA</TableHead>
+              <TableHead className="hidden sm:table-cell">Resumen IA</TableHead>
               {/* Sortable: score */}
               <TableHead
                 className="w-[80px] cursor-pointer select-none text-center"
@@ -326,7 +326,7 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
                   </div>
                 </TableCell>
 
-                <TableCell>
+                <TableCell className="hidden sm:table-cell">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <p className="line-clamp-2 text-xs text-zinc-600 dark:text-zinc-400 max-w-sm">
