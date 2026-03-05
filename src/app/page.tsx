@@ -1,20 +1,44 @@
 import Link from "next/link";
-import { desc } from "drizzle-orm";
+import { desc, asc } from "drizzle-orm";
 import { db, withRetry } from "@/db";
 import { projects } from "@/db/schema";
 import { NewProjectDialog } from "@/components/new-project-dialog";
+import { ProjectFilters } from "@/components/project-filters";
 import type { Project } from "@/types";
+import type { FilterValue, SortValue } from "@/components/project-filters";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
+interface HomePageProps {
+  searchParams: Promise<{ filter?: string; sort?: string }>;
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const { filter = "all", sort = "newest" } = await searchParams;
+
+  const orderCol =
+    sort === "name_asc" || sort === "name_desc"
+      ? sort === "name_asc"
+        ? asc(projects.name)
+        : desc(projects.name)
+      : sort === "oldest"
+        ? asc(projects.createdAt)
+        : desc(projects.createdAt);
+
   const allProjects: Project[] = await withRetry(() =>
-    db.select().from(projects).orderBy(desc(projects.createdAt))
+    db.select().from(projects).orderBy(orderCol)
   );
 
   const withIcp = allProjects.filter((p) => p.icpDescription).length;
+
+  const shown =
+    filter === "with_icp"
+      ? allProjects.filter((p) => p.icpDescription)
+      : filter === "without_icp"
+        ? allProjects.filter((p) => !p.icpDescription)
+        : allProjects;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -58,6 +82,16 @@ export default async function HomePage() {
           </div>
         )}
 
+        {/* ── Filters (only when there are projects) ── */}
+        {allProjects.length > 0 && (
+          <ProjectFilters
+            filter={(filter as FilterValue) ?? "all"}
+            sort={(sort as SortValue) ?? "newest"}
+            total={allProjects.length}
+            shown={shown.length}
+          />
+        )}
+
         {/* ── Projects grid ── */}
         {allProjects.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 py-28 text-center dark:border-zinc-800">
@@ -81,9 +115,14 @@ export default async function HomePage() {
               </NewProjectDialog>
             </div>
           </div>
+        ) : shown.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 py-16 text-center dark:border-zinc-800">
+            <p className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">Sin resultados para este filtro</p>
+            <p className="mt-1 text-xs text-zinc-400">Prueba cambiando el filtro activo</p>
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {allProjects.map((project) => (
+            {shown.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </div>

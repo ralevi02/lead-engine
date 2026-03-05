@@ -75,6 +75,23 @@ function StatusBadge({ status }: { status: Company["status"] }) {
   );
 }
 
+// ─── Sort icon ────────────────────────────────────────────────────────────────
+
+function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
+  return (
+    <svg
+      className={`h-3 w-3 transition-colors ${active ? "text-zinc-700 dark:text-zinc-200" : "text-zinc-300 dark:text-zinc-600"}`}
+      viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+    >
+      {dir === "asc" && active ? (
+        <path d="m18 15-6-6-6 6" />
+      ) : (
+        <path d="m6 9 6 6 6-6" />
+      )}
+    </svg>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface LeadsTableProps {
@@ -88,6 +105,12 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
   const [localCompanies, setLocalCompanies] = useState<CompanyWithContacts[]>(companies);
   const [isPending, startTransition] = useTransition();
   const [isEnriching, setIsEnriching] = useState(false);
+
+  // ── Filter / sort state ──────────────────────────────────────────────────
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Company["status"] | "all">("all");
+  const [sortCol, setSortCol] = useState<"score" | "name" | "status" | null>("score");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   // Sync with server-side prop updates (e.g. after router.refresh())
   // Keep locally-overridden statuses, but take fresh contacts from the server
@@ -121,6 +144,40 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
     );
   }
 
+  // ── Derived: filter + sort ──────────────────────────────────────────────
+  const STATUS_ORDER: Company["status"][] = ["qualified", "pending", "contacted", "rejected"];
+
+  const toggleSort = (col: typeof sortCol) => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir(col === "name" ? "asc" : "desc");
+    }
+  };
+
+  const displayCompanies = localCompanies
+    .filter((c) => {
+      const matchSearch = search === "" || c.name.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === "all" || c.status === statusFilter;
+      return matchSearch && matchStatus;
+    })
+    .sort((a, b) => {
+      if (sortCol === "score") {
+        const diff = (a.matchScore ?? -1) - (b.matchScore ?? -1);
+        return sortDir === "desc" ? -diff : diff;
+      }
+      if (sortCol === "name") {
+        const diff = a.name.localeCompare(b.name);
+        return sortDir === "asc" ? diff : -diff;
+      }
+      if (sortCol === "status") {
+        const diff = STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
+        return sortDir === "asc" ? diff : -diff;
+      }
+      return 0;
+    });
+
   const handleStatusChange = (
     companyId: string,
     newStatus: Company["status"]
@@ -152,19 +209,95 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
 
   return (
     <>
+      {/* ── Toolbar ── */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {/* Search */}
+        <div className="relative">
+          <svg className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Buscar empresa…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 w-52 rounded-md border border-zinc-200 bg-white pl-8 pr-3 text-xs text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+          />
+        </div>
+
+        {/* Status filter pills */}
+        <div className="flex items-center gap-1">
+          {(["all", "pending", "qualified", "contacted", "rejected"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                statusFilter === s
+                  ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                  : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+              }`}
+            >
+              {s === "all" ? "Todos" : STATUS_LABELS[s]}
+            </button>
+          ))}
+        </div>
+
+        {/* Count */}
+        <span className="ml-auto text-xs text-zinc-400">
+          {displayCompanies.length < localCompanies.length
+            ? `${displayCompanies.length} de ${localCompanies.length}`
+            : `${localCompanies.length}`}{" "}
+          lead{localCompanies.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+
       <div className="rounded-lg border border-zinc-200 dark:border-zinc-800">
         <Table>
           <TableHeader>
             <TableRow className="bg-zinc-50 dark:bg-zinc-900">
-              <TableHead className="w-[220px]">Empresa</TableHead>
+              {/* Sortable: name */}
+              <TableHead
+                className="w-[220px] cursor-pointer select-none"
+                onClick={() => toggleSort("name")}
+              >
+                <span className="flex items-center gap-1">
+                  Empresa
+                  <SortIcon active={sortCol === "name"} dir={sortDir} />
+                </span>
+              </TableHead>
               <TableHead>Resumen IA</TableHead>
-              <TableHead className="w-[80px] text-center">Score</TableHead>
-              <TableHead className="w-[110px]">Estado</TableHead>
+              {/* Sortable: score */}
+              <TableHead
+                className="w-[80px] cursor-pointer select-none text-center"
+                onClick={() => toggleSort("score")}
+              >
+                <span className="flex items-center justify-center gap-1">
+                  Score
+                  <SortIcon active={sortCol === "score"} dir={sortDir} />
+                </span>
+              </TableHead>
+              {/* Sortable: status */}
+              <TableHead
+                className="w-[110px] cursor-pointer select-none"
+                onClick={() => toggleSort("status")}
+              >
+                <span className="flex items-center gap-1">
+                  Estado
+                  <SortIcon active={sortCol === "status"} dir={sortDir} />
+                </span>
+              </TableHead>
               <TableHead className="w-[100px] text-right">Acción</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {localCompanies.map((company) => (
+            {displayCompanies.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="py-12 text-center text-sm text-zinc-400">
+                  Sin resultados — intenta cambiar los filtros
+                </TableCell>
+              </TableRow>
+            ) : (
+              displayCompanies.map((company) => (
               <TableRow
                 key={company.id}
                 className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
@@ -231,7 +364,8 @@ export function LeadsTable({ companies, projectId }: LeadsTableProps) {
                   </Button>
                 </TableCell>
               </TableRow>
-            ))}
+            ))
+            )}
           </TableBody>
         </Table>
       </div>
