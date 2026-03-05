@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Providers } from "@/components/providers";
+import { AppSidebar } from "@/components/app-sidebar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,15 +27,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <TooltipProvider>
-          {children}
-        </TooltipProvider>
-        <Toaster richColors position="top-right" />
+    <html lang="es" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Providers>
+          <TooltipProvider>
+            <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-900">
+              <AppSidebar />
+              {/* Main content — offset by sidebar width on md+ */}
+              <div className="flex flex-1 flex-col md:pl-56">
+                {children}
+              </div>
+            </div>
+          </TooltipProvider>
+          <Toaster richColors position="top-right" />
+        </Providers>
       </body>
     </html>
   );
 }
+
